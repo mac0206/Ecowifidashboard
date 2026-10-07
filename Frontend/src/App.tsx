@@ -4,9 +4,9 @@ import './App.css'
 function App() {
   // Mock data for the capstone prototype
   const [bottlesCollected, setBottlesCollected] = useState(142);
-  const [activeUsers, setActiveUsers] = useState(8);
-  const [batteryLevel, setBatteryLevel] = useState(85); 
-  const [systemStatus, setSystemStatus] = useState("Online");
+const activeUsers = 8;
+const batteryLevel = 85;
+const systemStatus = "Online";
 
   return (
     <div className="dashboard-container">
