@@ -4,7 +4,7 @@
   padding: 25px;
   background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 8px 21px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
   text-align: center;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -12,7 +12,7 @@
 .status-box {
   background: #f4f9f4; border: 1px solid #d1e7dd; padding: 15px; 
   border-radius: 8px; margin-bottom: 20px; text-align: left;
-}
+0
 .highlight { font-weight: bold; color: #27ae60; font-size: 1.1rem; }
 .action-group { display: flex; flex-direction: column; gap: 10px; }
 .btn-primary { background-color: #27ae60; }
