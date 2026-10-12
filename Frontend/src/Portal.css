@@ -1,0 +1,24 @@
+.portal-card {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 25px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 21px rgba(0,0,0,0.1);
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.subtitle { color: #666; font-size: 0.95rem; margin-bottom: 20px; }
+.status-box {
+  background: #f4f9f4; border: 1px solid #d1e7dd; padding: 15px; 
+  border-radius: 8px; margin-bottom: 20px; text-align: left;
+}
+.highlight { font-weight: bold; color: #27ae60; font-size: 1.1rem; }
+.action-group { display: flex; flex-direction: column; gap: 10px; }
+.btn-primary { background-color: #27ae60; }
+.btn-primary:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+.btn-secondary { background-color: #3498db; }
+.success-banner {
+  background-color: #d4edda; color: #155724; padding: 15px; 
+  border-radius: 6px; font-weight: bold;
+}
