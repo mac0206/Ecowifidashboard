@@ -53,7 +53,7 @@ export default function Portal() {
           <div className="status-box">
             <p><strong>Status:</strong> Waiting for bottle...</p>
             <p><strong>Bottles Detected:</strong> <span className="highlight">{pendingBottles}</span></p>
-            <p><strong>Times Available:</strong> <span className="highlight">{pendingBottles * 15} Mins</span></p>
+            <p><strong>Time Available:</strong> <span className="highlight">{pendingBottles * 15} Mins</span></p>
           </div>
           
           <div className="action-group">
