@@ -54,7 +54,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <p className="metric-value">92%</p>
           <progress value="92" max="100"></progress>
         </div>
-      </main>
+      </main>C
     </div>
   );
 }
