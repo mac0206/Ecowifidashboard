@@ -1,24 +1,117 @@
+/* Full-page background wrapper */
+.portal-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ecfdf5; 
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding: 20px;
+}
+
+/* Main UI Card */
 .portal-card {
-  max-width: 400px;
-  margin: 40px auto;
-  padding: 25px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-  text-align:end;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 30px;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(16, 185, 129, 0.1);
+  border-top: 8px solid #10b981; 
+  text-align: center;
 }
-.subtitle { color: #666; font-size: 0.95rem; margin-bottom: 20px; }
+
+.portal-card h2 {
+  color: #064e3b;
+  margin-bottom: 8px;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+/* Green Dashboard Section */
 .status-box {
-  background: #f4f9f4; border: 1px solid #d1e7dd; padding: 15px; 
-  border-radius: 8px; margin-bottom: 20px; text-align: left;
-.highlight { font-weight: bold; color: #27ae60; font-size: 1.1rem; }
-.action-group { display: flex; flex-direction: column; gap: 10px; }
-.btn-primary { background-color: #27ae60; }
-.btn-primary:disabled { background-color: #bdc3c7; cursor: not-allowed; }
-.btn-secondary { background-color: #3498db; }
-.success-banner {
-  background-color: #d4edda; color: #155724; padding: 15px; 
-  border-radius: 6px; font-weight: bold;
+  background-color: #f0fdf4; 
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: left;
 }
+
+.status-box p {
+  margin: 12px 0;
+  color: #374151;
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.highlight {
+  color: #10b981;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Modern Rounded Buttons */
+.btn-primary {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.btn-primary:disabled {
+  background-color: #a7f3d0;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #10b981;
+  border: 2px solid #10b981;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.btn-secondary:hover {
+  background-color: #f0fdf4;
+}
+
+.success-banner {
+  background-color: #10b981;
+  color: white;
+  padding: 20px;
+  border-radius: 16px;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 20px;
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2);
 }
