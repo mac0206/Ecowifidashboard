@@ -6,8 +6,58 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+
+const ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL || 'admin@ecowifi.com';
+
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || 'admin123';
+
+// ADMIN LOGIN ENDPOINT
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body;
+
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string'
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email and password are required.',
+    });
+  }
+
+  if (
+    email.trim().toLowerCase() ===
+      ADMIN_EMAIL.toLowerCase() &&
+    password === ADMIN_PASSWORD
+  ) {
+    return res.json({
+      success: true,
+      message: 'Login successful.',
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Invalid email or password.',
+  });
+});
+
+
 // Initialize SQLite Database
-const db = new sqlite3.Database('./vending_data.db');
+const path = require('path');
+
+const db = new sqlite3.Database(
+  path.join(__dirname, 'vending_data.db'),
+  (err) => {
+    if (err) {
+      console.error('SQLite connection failed:', err.message);
+    } else {
+      console.log('Connected to vending_data.db');
+    }
+  }
+);
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
