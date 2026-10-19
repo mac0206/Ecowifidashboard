@@ -444,21 +444,19 @@ function AdminDashboard({
   );
 }
 
+
 function AdminRoute() {
   const [token, setToken] = useState(
     () => localStorage.getItem('adminToken') || ''
   );
-  const [adminEmail, setAdminEmail] = useState('');
 
   const logout = useCallback(() => {
     localStorage.removeItem('adminToken');
     setToken('');
-    setAdminEmail('');
   }, []);
 
-  function updateToken(newToken: string, email: string) {
+  function updateToken(newToken: string, _email: string) {
     setToken(newToken);
-    setAdminEmail(email);
   }
 
   if (!token) {
