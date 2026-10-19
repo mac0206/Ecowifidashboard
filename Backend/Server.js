@@ -230,20 +230,62 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
     }
 });
 
-// UPDATE ADMIN EMAIL, PASSWORD, AND REWARD RATE
-app.put('/api/admin/settings', requireAdmin, async (req, res) => {
+// UPDATE REWARD RATE ONLY
+app.get('/api/admin/reward-settings', requireAdmin, async (req, res) => {
     try {
-        const {
-            currentPassword,
-            email,
-            newPassword,
-            minutesPerBottle
-        } = req.body || {};
+        const settings = await get(
+            'SELECT minutes_per_bottle FROM settings WHERE id = 1'
+        );
 
-        if (
-            typeof currentPassword !== 'string' ||
-            !currentPassword
-        ) {
+        res.json({
+            success: true,
+            minutesPerBottle: settings.minutes_per_bottle
+        });
+    } catch (error) {
+        console.error('Reward settings error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Unable to load reward settings.'
+        });
+    }
+});
+
+app.put('/api/admin/reward-settings', requireAdmin, async (req, res) => {
+    try {
+        const rate = Number(req.body?.minutesPerBottle);
+
+        if (!Number.isInteger(rate) || rate < 1 || rate > 1440) {
+            return res.status(400).json({
+                success: false,
+                message: 'Minutes per bottle must be between 1 and 1440.'
+            });
+        }
+
+        await run(
+            'UPDATE settings SET minutes_per_bottle = ? WHERE id = 1',
+            [rate]
+        );
+
+        res.json({
+            success: true,
+            message: 'Reward settings saved successfully.',
+            minutesPerBottle: rate
+        });
+    } catch (error) {
+        console.error('Reward update error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Unable to save reward settings.'
+        });
+    }
+});
+
+// UPDATE ADMIN EMAIL AND PASSWORD ONLY
+app.put('/api/admin/account', requireAdmin, async (req, res) => {
+    try {
+        const { currentPassword, email, newPassword } = req.body || {};
+
+        if (typeof currentPassword !== 'string' || !currentPassword) {
             return res.status(400).json({
                 success: false,
                 message: 'Enter your current password.'
@@ -266,20 +308,14 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
             });
         }
 
-        let updatedEmail = admin.email;
-
-        if (email !== undefined) {
-            if (
-                typeof email !== 'string' ||
-                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Enter a valid email address.'
-                });
-            }
-
-            updatedEmail = email.trim();
+        if (
+            typeof email !== 'string' ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Enter a valid email address.'
+            });
         }
 
         let passwordHash = admin.password_hash;
@@ -298,51 +334,25 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
             passwordHash = await bcrypt.hash(newPassword, 12);
         }
 
-        let rate;
-
-        if (minutesPerBottle !== undefined) {
-            rate = Number(minutesPerBottle);
-
-            if (!Number.isInteger(rate) || rate < 1 || rate > 1440) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Minutes per bottle must be between 1 and 1440.'
-                });
-            }
-        }
-
-        // Update account and invalidate existing tokens.
         await run(
             `UPDATE admins
              SET email = ?,
                  password_hash = ?,
                  token_version = token_version + 1
              WHERE id = ?`,
-            [updatedEmail, passwordHash, admin.id]
+            [email.trim(), passwordHash, admin.id]
         );
-
-        if (rate !== undefined) {
-            await run(
-                'UPDATE settings SET minutes_per_bottle = ? WHERE id = 1',
-                [rate]
-            );
-        }
 
         const updatedAdmin = await get(
             'SELECT id, email, token_version FROM admins WHERE id = ?',
             [admin.id]
         );
 
-        const settings = await get(
-            'SELECT minutes_per_bottle FROM settings WHERE id = 1'
-        );
-
         res.json({
             success: true,
-            message: 'Settings saved successfully.',
+            message: 'Admin account updated successfully.',
             token: createToken(updatedAdmin),
-            email: updatedAdmin.email,
-            minutesPerBottle: settings.minutes_per_bottle
+            email: updatedAdmin.email
         });
     } catch (error) {
         if (error.code === 'SQLITE_CONSTRAINT') {
@@ -352,10 +362,10 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
             });
         }
 
-        console.error('Settings update error:', error.message);
+        console.error('Account update error:', error.message);
         res.status(500).json({
             success: false,
-            message: 'Unable to save settings.'
+            message: 'Unable to update admin account.'
         });
     }
 });

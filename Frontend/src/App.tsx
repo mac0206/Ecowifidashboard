@@ -1,6 +1,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+} from 'react-router-dom';
 import Portal from './Portal';
 import './App.css';
 
@@ -33,7 +39,11 @@ async function adminRequest(
   });
 }
 
-function AdminLogin({ onLogin }: {
+// ADMIN LOGIN
+
+function AdminLogin({
+  onLogin,
+}: {
   onLogin: (token: string, email: string) => void;
 }) {
   const [email, setEmail] = useState('admin@ecowifi.com');
@@ -103,11 +113,14 @@ function AdminLogin({ onLogin }: {
         <button className="primary-button" disabled={loading}>
           {loading ? 'Logging in...' : 'Log In'}
         </button>
+
         <p className="login-hint">Eco WiFi Administration</p>
       </form>
     </div>
   );
 }
+
+// ADMIN DASHBOARD
 
 function AdminDashboard({
   token,
@@ -127,15 +140,23 @@ function AdminDashboard({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [activeSettingsTab, setActiveSettingsTab] = useState<
+    'reward' | 'account'
+  >('reward');
+
   const [settings, setSettings] = useState<Settings>({
     email: '',
     minutesPerBottle: 15,
   });
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // LOAD DASHBOARD STATISTICS
 
   const loadStats = useCallback(async () => {
     try {
@@ -146,17 +167,33 @@ function AdminDashboard({
         return;
       }
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        setStats((old) => ({
+          ...old,
+          systemStatus: 'Offline',
+        }));
+        return;
+      }
 
       const data = await response.json();
-      setStats(data);
+
+      setStats({
+        totalUsers: Number(data.totalUsers ?? 0),
+        totalBottles: Number(data.totalBottles ?? 0),
+        totalMinutes: Number(data.totalMinutes ?? 0),
+        systemStatus: data.systemStatus ?? 'Online',
+      });
     } catch {
-      setStats((old) => ({ ...old, systemStatus: 'Offline' }));
+      setStats((old) => ({
+        ...old,
+        systemStatus: 'Offline',
+      }));
     }
   }, [token, onLogout]);
 
   useEffect(() => {
     void loadStats();
+
     const interval = window.setInterval(() => {
       void loadStats();
     }, 5000);
@@ -164,30 +201,46 @@ function AdminDashboard({
     return () => window.clearInterval(interval);
   }, [loadStats]);
 
+  // OPEN SETTINGS
+
   async function openSettings() {
     setMenuOpen(false);
     setSettingsError('');
     setSettingsMessage('');
+    setActiveSettingsTab('reward');
 
     try {
-      const response = await adminRequest(token, '/admin/settings');
+      const [accountResponse, rewardResponse] = await Promise.all([
+        adminRequest(token, '/admin/settings'),
+        adminRequest(token, '/admin/reward-settings'),
+      ]);
 
-      if (response.status === 401) {
+      if (
+        accountResponse.status === 401 ||
+        rewardResponse.status === 401
+      ) {
         onLogout();
         return;
       }
 
-      const data = await response.json();
+      const accountData = await accountResponse.json();
+      const rewardData = await rewardResponse.json();
 
-      if (!response.ok) {
-        setSettingsError(data.message || 'Unable to load settings.');
+      if (!accountResponse.ok || !rewardResponse.ok) {
+        setSettingsError(
+          accountData.message ||
+            rewardData.message ||
+            'Unable to load settings.'
+        );
+        setSettingsOpen(true);
         return;
       }
 
       setSettings({
-        email: data.email,
-        minutesPerBottle: data.minutesPerBottle,
+        email: accountData.email,
+        minutesPerBottle: Number(rewardData.minutesPerBottle),
       });
+
       setCurrentPassword('');
       setNewPassword('');
       setSettingsOpen(true);
@@ -197,6 +250,8 @@ function AdminDashboard({
     }
   }
 
+  // SAVE REWARD SETTINGS OR ADMIN ACCOUNT
+
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault();
     setSettingsError('');
@@ -204,20 +259,34 @@ function AdminDashboard({
     setSaving(true);
 
     try {
-      const response = await adminRequest(token, '/admin/settings', {
+      const isRewardTab = activeSettingsTab === 'reward';
+
+      const endpoint = isRewardTab
+        ? '/admin/reward-settings'
+        : '/admin/account';
+
+      const body = isRewardTab
+        ? {
+            minutesPerBottle: settings.minutesPerBottle,
+          }
+        : {
+            currentPassword,
+            email: settings.email,
+            newPassword,
+          };
+
+      const response = await adminRequest(token, endpoint, {
         method: 'PUT',
-        body: JSON.stringify({
-          currentPassword,
-          email: settings.email,
-          newPassword,
-          minutesPerBottle: settings.minutesPerBottle,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (response.status === 401) {
-        if (data.message?.toLowerCase().includes('current password')) {
+        if (
+          !isRewardTab &&
+          data.message?.toLowerCase().includes('current password')
+        ) {
           setSettingsError(data.message);
         } else {
           onLogout();
@@ -230,16 +299,29 @@ function AdminDashboard({
         return;
       }
 
-      localStorage.setItem('adminToken', data.token);
-      onTokenUpdate(data.token, data.email);
+      if (isRewardTab) {
+        setSettings((old) => ({
+          ...old,
+          minutesPerBottle: Number(data.minutesPerBottle),
+        }));
 
-      setSettings({
-        email: data.email,
-        minutesPerBottle: data.minutesPerBottle,
-      });
-      setCurrentPassword('');
-      setNewPassword('');
-      setSettingsMessage('Settings saved successfully.');
+        setSettingsMessage('Reward settings saved successfully.');
+      } else {
+        if (data.token) {
+          localStorage.setItem('adminToken', data.token);
+          onTokenUpdate(data.token, data.email);
+        }
+
+        setSettings((old) => ({
+          ...old,
+          email: data.email,
+        }));
+
+        setCurrentPassword('');
+        setNewPassword('');
+        setSettingsMessage('Admin account updated successfully.');
+      }
+
       void loadStats();
     } catch {
       setSettingsError('Cannot connect to the backend.');
@@ -266,7 +348,9 @@ function AdminDashboard({
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <span></span><span></span><span></span>
+            <span></span>
+            <span></span>
+            <span></span>
           </button>
 
           {menuOpen && (
@@ -274,6 +358,7 @@ function AdminDashboard({
               <button onClick={() => void openSettings()}>
                 <span>⚙</span> Settings
               </button>
+
               <button onClick={onLogout}>
                 <span>↪</span> Logout
               </button>
@@ -288,7 +373,12 @@ function AdminDashboard({
             <h2>Dashboard Overview</h2>
             <p>Monitor your Eco WiFi bottle rewards.</p>
           </div>
-          <span className={`status-pill ${stats.systemStatus === 'Online' ? 'online' : ''}`}>
+
+          <span
+            className={`status-pill ${
+              stats.systemStatus === 'Online' ? 'online' : ''
+            }`}
+          >
             <span className="status-dot"></span>
             {stats.systemStatus}
           </span>
@@ -300,7 +390,9 @@ function AdminDashboard({
             <div>
               <p>Total PET Bottles</p>
               <h3>{Number(stats.totalBottles).toLocaleString()}</h3>
-              <span className="metric-description">Bottles redeemed</span>
+              <span className="metric-description">
+                Bottles redeemed
+              </span>
             </div>
           </article>
 
@@ -309,7 +401,9 @@ function AdminDashboard({
             <div>
               <p>Connected Devices</p>
               <h3>{Number(stats.totalUsers).toLocaleString()}</h3>
-              <span className="metric-description">Distinct devices in session history</span>
+              <span className="metric-description">
+                Distinct devices in session history
+              </span>
             </div>
           </article>
         </div>
@@ -319,8 +413,9 @@ function AdminDashboard({
           <div>
             <h3>Reward Settings</h3>
             <p>
-              Each PET bottle earns <strong>{settings.minutesPerBottle} minutes</strong>
-              {' '}of WiFi access. Open Settings in the menu to change the rate.
+              Each PET bottle earns{' '}
+              <strong>{settings.minutesPerBottle} minutes</strong> of WiFi
+              access. Open Settings in the menu to change the rate.
             </p>
           </div>
         </section>
@@ -331,11 +426,15 @@ function AdminDashboard({
         </div>
       </main>
 
+      {/* SETTINGS MODAL */}
+
       {settingsOpen && (
         <div
           className="modal-backdrop"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setSettingsOpen(false);
+            if (e.target === e.currentTarget) {
+              setSettingsOpen(false);
+            }
           }}
         >
           <section
@@ -348,9 +447,11 @@ function AdminDashboard({
               <div>
                 <span className="modal-eyebrow">ADMINISTRATION</span>
                 <h2 id="settings-title">Settings</h2>
-                <p>Update your account and bottle reward rate.</p>
+                <p>Manage your reward rate and administrator account.</p>
               </div>
+
               <button
+                type="button"
                 className="close-button"
                 aria-label="Close settings"
                 onClick={() => setSettingsOpen(false)}
@@ -360,69 +461,140 @@ function AdminDashboard({
             </div>
 
             <form onSubmit={saveSettings}>
-              <label htmlFor="settings-email">Admin Email</label>
-              <input
-                id="settings-email"
-                type="email"
-                value={settings.email}
-                onChange={(e) =>
-                  setSettings({ ...settings, email: e.target.value })
-                }
-                required
-              />
+              {/* SETTINGS TABS */}
 
-              <label htmlFor="settings-new-password">New Password</label>
-              <input
-                id="settings-new-password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Leave blank to keep current password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-              />
-              <p className="field-hint">Use at least 8 characters if changing it.</p>
+              <div className="settings-tabs">
+                <button
+                  type="button"
+                  className={`settings-tab ${
+                    activeSettingsTab === 'reward' ? 'active' : ''
+                  }`}
+                  onClick={() => {
+                    setActiveSettingsTab('reward');
+                    setSettingsError('');
+                    setSettingsMessage('');
+                  }}
+                >
+                  ♻ Reward Settings
+                </button>
 
-              <div className="form-divider"></div>
-
-              <label htmlFor="settings-rate">Minutes per PET Bottle</label>
-              <div className="rate-input-wrap">
-                <input
-                  id="settings-rate"
-                  type="number"
-                  min={1}
-                  max={1440}
-                  step={1}
-                  value={settings.minutesPerBottle}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      minutesPerBottle: Number(e.target.value),
-                    })
-                  }
-                  required
-                />
-                <span>minutes / bottle</span>
+                <button
+                  type="button"
+                  className={`settings-tab ${
+                    activeSettingsTab === 'account' ? 'active' : ''
+                  }`}
+                  onClick={() => {
+                    setActiveSettingsTab('account');
+                    setSettingsError('');
+                    setSettingsMessage('');
+                  }}
+                >
+                  ⚙ Admin Account
+                </button>
               </div>
 
-              <div className="reward-preview">
-                <span>Example reward</span>
-                <strong>3 bottles = {settings.minutesPerBottle * 3} minutes</strong>
-              </div>
+              {/* REWARD SETTINGS TAB */}
 
-              <label htmlFor="settings-current-password">Current Password</label>
-              <input
-                id="settings-current-password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Required to save changes"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-              />
+              {activeSettingsTab === 'reward' ? (
+                <>
+                  <label htmlFor="settings-rate">
+                    Minutes per PET Bottle
+                  </label>
 
-              {settingsError && <p className="error-message">{settingsError}</p>}
-              {settingsMessage && <p className="success-message">{settingsMessage}</p>}
+                  <div className="rate-input-wrap">
+                    <input
+                      id="settings-rate"
+                      type="number"
+                      min={1}
+                      max={1440}
+                      step={1}
+                      value={settings.minutesPerBottle}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          minutesPerBottle: Number(e.target.value),
+                        })
+                      }
+                      required
+                    />
+                    <span>minutes / bottle</span>
+                  </div>
+
+                  <div className="reward-preview">
+                    <span>Example reward</span>
+                    <strong>
+                      3 bottles = {settings.minutesPerBottle * 3} minutes
+                    </strong>
+                  </div>
+
+                  <p className="field-hint">
+                    Change the WiFi reward time earned for each bottle.
+                    Your current password is not required.
+                  </p>
+                </>
+              ) : (
+                /* ADMIN ACCOUNT TAB */
+
+                <>
+                  <label htmlFor="settings-email">Admin Email</label>
+                  <input
+                    id="settings-email"
+                    type="email"
+                    autoComplete="username"
+                    value={settings.email}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        email: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <label htmlFor="settings-new-password">
+                    New Password
+                  </label>
+                  <input
+                    id="settings-new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Leave blank to keep current password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={8}
+                  />
+
+                  <p className="field-hint">
+                    If changing your password, use at least 8 characters.
+                    Leave it blank to keep your current password.
+                  </p>
+
+                  <label htmlFor="settings-current-password">
+                    Current Password
+                  </label>
+                  <input
+                    id="settings-current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Enter your current password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                  />
+                </>
+              )}
+
+              {settingsError && (
+                <p className="error-message" role="alert">
+                  {settingsError}
+                </p>
+              )}
+
+              {settingsMessage && (
+                <p className="success-message" role="status">
+                  {settingsMessage}
+                </p>
+              )}
 
               <div className="modal-actions">
                 <button
@@ -432,7 +604,12 @@ function AdminDashboard({
                 >
                   Cancel
                 </button>
-                <button className="primary-button" disabled={saving}>
+
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={saving}
+                >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
@@ -444,6 +621,7 @@ function AdminDashboard({
   );
 }
 
+// ADMIN ROUTE
 
 function AdminRoute() {
   const [token, setToken] = useState(
@@ -471,6 +649,8 @@ function AdminRoute() {
     />
   );
 }
+
+// MAIN APP
 
 export default function App() {
   return (
