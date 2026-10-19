@@ -1,0 +1,5 @@
+node_modules/
+.env
+vending_data.db
+vending_data.db-shm
+vending_data.db-wal
